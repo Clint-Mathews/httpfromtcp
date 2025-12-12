@@ -3,27 +3,37 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
+	"log"
+	"net"
 	"strings"
 )
 
 func main() {
-	fileName := "./message.txt"
-	file, err := os.Open(fileName)
+	listener, err := net.Listen("tcp", ":42069")
 	if err != nil {
-		// Expecting fileName to be in the root directory
-		panic(err)
+		log.Fatal("error", err)
 	}
-	readDataChan := getLinesChannel(file)
-	for line := range readDataChan {
-		// var line string
-		// var ok bool
-		// if line, ok = <-readDataChan; !ok {
-		// 	return
-		// }
-		fmt.Printf("read: %s\n", line)
-	}
+	defer listener.Close()
 
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Fatal("error", err)
+		}
+
+		fmt.Println("Connection Accepted")
+		readDataChan := getLinesChannel(conn)
+		for {
+			var line string
+			var ok bool
+			if line, ok = <-readDataChan; !ok {
+				fmt.Println("Connection Closed")
+				break
+			}
+			fmt.Printf("%s\n", line)
+		}
+		conn.Close()
+	}
 }
 
 func getLinesChannel(f io.ReadCloser) <-chan string {
